@@ -2,9 +2,9 @@
 <html>
 <head>
   <title>Track Package</title>
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
   <style>
     body {
@@ -49,6 +49,7 @@
       border-radius: 4px;
       background-color: white;
     }
+
     #result {
       display: none;
       margin-top: 20px;
@@ -58,6 +59,7 @@
       border-radius: 8px;
       color: #000;
     }
+
     .progress-bar {
       display: flex;
       justify-content: space-between;
@@ -96,6 +98,7 @@
       margin-top: 10px;
       font-size: 14px;
     }
+
     .timeline {
       border-left: 3px solid #ccc;
       margin-top: 20px;
@@ -125,92 +128,85 @@
   </div>
 
   <script>
-    // Firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyA-rUIh4Uffmc6kjk8VFWRXISdkZQxxnPI",
-      authDomain: "package-tracker-cb9fd.firebaseapp.com",
-      projectId: "package-tracker-cb9fd",
-      storageBucket: "package-tracker-cb9fd.firebasestorage.app",
-      messagingSenderId: "160321800329",
-      appId: "1:160321800329:web:ae4bd3325474907d631e58"
-    };
+  const firebaseConfig = {
+    apiKey: "AIzaSyA-rUIh4Uffmc6kjk8VFWRXISdkZQxxnPI",
+    authDomain: "package-tracker-cb9fd.firebaseapp.com",
+    projectId: "package-tracker-cb9fd",
+    storageBucket: "package-tracker-cb9fd.firebasestorage.app",
+    messagingSenderId: "160321800329",
+    appId: "1:160321800329:web:ae4bd3325474907d631e58"
+  };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-    document.getElementById('trackForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const code = document.getElementById("trackCode").value.trim();
-      const result = document.getElementById("result");
-      result.style.display = "none";
-      result.innerHTML = "Loading...";
+  document.getElementById('trackForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const code = document.getElementById("trackCode").value.trim();
+    const result = document.getElementById("result");
+    result.style.display = "none";
+    result.innerHTML = "Loading...";
 
-      try {
-        const doc = await db.collection("packages").doc(code).get();
-        if (!doc.exists) {
-          result.innerHTML = "❌ No package found with that code.";
-          result.style.display = "block";
-          return;
-        }
+    const doc = await db.collection("packages").doc(code).get();
+    if (!doc.exists) {
+      result.innerHTML = "❌ No package found with that code.";
+      result.style.display = "block";
+      return;
+    }
 
-        const data = doc.data();
-        const { name, address, phone, status, trackingHistory = [] } = data;
+    const data = doc.data();
+    const { name, address, phone, status, trackingHistory = [] } = data;
 
-        // Steps
-        let steps = ["Package Cleared", "In Transit", "Out for Delivery", "Delivered"];
-        let currentStep = "";
+    // Steps definition
+    let steps = ["Package Cleared", "In Transit", "Out for Delivery", "Delivered"];
+    let currentStep = "";
 
-        if (status === "shipping") {
-          currentStep = "In Transit";
-        } else if (status === "hold") {
-          steps = ["Package On Hold", "Cleared", "In Transit", "Delivered"];
-          currentStep = "Package On Hold";
-        }
+    if (status === "shipping") {
+      currentStep = "In Transit";
+    } else if (status === "hold") {
+      steps = ["Package On Hold", "Cleared", "In Transit", "Delivered"];
+      currentStep = "Package On Hold";
+    }
 
-        // Progress bar
-        const progressHTML = `
-          <div class="progress-bar">
-            ${steps.map(step => `
-              <div class="step ${steps.indexOf(step) <= steps.indexOf(currentStep) ? 'active' : ''}">
-                <div class="circle">&#10003;</div>
-                <p>${step}</p>
-              </div>
-            `).join('')}
+    // Progress bar HTML
+    const progressHTML = `
+      <div class="progress-bar">
+        ${steps.map(step => `
+          <div class="step ${steps.indexOf(step) <= steps.indexOf(currentStep) ? 'active' : ''}">
+            <div class="circle">&#10003;</div>
+            <p>${step}</p>
           </div>
-        `;
+        `).join('')}
+      </div>
+    `;
 
-        // Timeline
-        const timelineHTML = trackingHistory.length
-          ? `
-            <div class="timeline">
-              ${[...trackingHistory].reverse().map(event => `
-                <div class="event">
-                  <strong>${event.status}</strong>
-                  <time>${event.date}</time>
-                </div>
-              `).join('')}
+    // Timeline HTML
+    const timelineHTML = trackingHistory.length
+      ? `
+        <div class="timeline">
+          ${[...trackingHistory].reverse().map(event => `
+            <div class="event">
+              <strong>${event.status}</strong>
+              <time>${event.date}</time>
             </div>
-          `
-          : '<p>No tracking events yet.</p>';
+          `).join('')}
+        </div>
+      `
+      : '<p>No tracking events yet.</p>';
 
-        // Final output
-        result.innerHTML = `
-          <strong>Name:</strong> ${name}<br><br>
-          <strong>Address:</strong> ${address.replace(/\n/g, "<br>")}<br><br>
-          <strong>Phone:</strong> ${phone}<br><br>
-          <strong>Status:</strong> ${status === "hold"
-            ? "🛑 Package On Hold at Customs (Please clear your package to enable shipping)"
-            : "🚚 Shipping in Progress"}<br><br>
-          ${progressHTML}
-          ${timelineHTML}
-        `;
-        result.style.display = "block";
-      } catch (err) {
-        result.innerHTML = "⚠️ Error fetching package details.";
-        result.style.display = "block";
-        console.error(err);
-      }
-    });
-  </script>
+    result.innerHTML = `
+      <strong>Name:</strong> ${name}<br><br>
+      <strong>Address:</strong> ${address.replace(/\n/g, "<br>")}<br><br>
+      <strong>Phone:</strong> ${phone}<br><br>
+      <strong>Status:</strong> ${status === "hold"
+        ? "🛑 Package On Hold at Customs (Please clear your package to enable shipping)"
+        : "🚚 Shipping in Progress"}<br><br>
+      ${progressHTML}
+      ${timelineHTML}
+    `;
+    result.style.display = "block";
+  });
+</script>
+
 </body>
 </html>
